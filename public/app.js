@@ -43,6 +43,21 @@ document.getElementById('stylePresets').addEventListener('click', e => {
 });
 
 /* ══════════════════════════════════════════
+   FILE SIZE VALIDATION
+══════════════════════════════════════════ */
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB
+
+function validateFileSize(file, maxLimit = MAX_FILE_SIZE) {
+  if (file.size > maxLimit) {
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    const maxMB = (maxLimit / 1024 / 1024).toFixed(0);
+    alert(`文件"${file.name}" 太大（${sizeMB}MB），最大支持 ${maxMB}MB`);
+    return false;
+  }
+  return true;
+}
+
+/* ══════════════════════════════════════════
    STORYBOARD UPLOAD
 ══════════════════════════════════════════ */
 const storyboardInput = document.getElementById('storyboardInput');
@@ -50,9 +65,17 @@ const storyboardZone  = document.getElementById('storyboardZone');
 const storyboardPrev  = document.getElementById('storyboardPreview');
 
 storyboardInput.addEventListener('change', e => {
-  if (e.target.files[0]) setStoryboard(e.target.files[0]);
+  const file = e.target.files[0];
+  if (file && validateFileSize(file)) {
+    setStoryboard(file);
+  }
+  e.target.value = ''; // Clear to allow re-selecting same file
 });
-setupDropZone(storyboardZone, f => setStoryboard(f));
+setupDropZone(storyboardZone, f => {
+  if (validateFileSize(f)) {
+    setStoryboard(f);
+  }
+});
 
 function setStoryboard(file) {
   storyboardFile = file;
@@ -89,7 +112,25 @@ function addFiles(rawFiles, arr, max, thumbContainer, type) {
   const files = Array.from(rawFiles).filter(f => f.type.startsWith('image/'));
   const slots = max - arr.length;
   if (slots <= 0) return;
-  arr.push(...files.slice(0, slots));
+
+  const validFiles = [];
+  const invalidFiles = [];
+
+  for (const f of files.slice(0, slots)) {
+    if (validateFileSize(f)) {
+      validFiles.push(f);
+    } else {
+      invalidFiles.push(f);
+    }
+  }
+
+  if (invalidFiles.length > 0) {
+    const count = invalidFiles.length;
+    const typeLabel = type === 'char' ? '角色参考' : '背景参考';
+    alert(`${count} 张${typeLabel}图文件太大，已跳过（最大支持 4MB）`);
+  }
+
+  arr.push(...validFiles);
   renderThumbs(arr, thumbContainer, type);
 }
 
@@ -141,7 +182,18 @@ analyzeBtn.addEventListener('click', async () => {
     if (!json.success) throw new Error(json.error || '分析失败');
     renderResults(json.data);
   } catch (err) {
-    alert('分析失败：' + err.message);
+    // 错误可能是服务器返回的 JSON，也可能是其他错误
+    let errorMsg = err.message;
+    // 如果 err 包含 JSON 格式的错误信息，提取 error 字段
+    if (err.message && err.message.includes('error')) {
+      try {
+        const parsed = JSON.parse(err.message);
+        if (parsed.error) errorMsg = parsed.error;
+      } catch {
+        // 如果不是 JSON 格式，保持原样
+      }
+    }
+    alert('分析失败：' + errorMsg);
   } finally {
     hideLoading();
   }

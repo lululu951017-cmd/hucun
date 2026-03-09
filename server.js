@@ -6,11 +6,25 @@ const path = require('path');
 const app = express();
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 4 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) cb(null, true);
     else cb(new Error('只支持图片文件'));
   }
+});
+
+// Multer 错误处理中间件 - 返回 JSON 格式
+app.use((err, req, res, next) => {
+  if (err && err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(413).json({ error: '图片文件太大，最大支持 4MB' });
+  }
+  if (err && err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ error: '上传的文件数量超出限制' });
+  }
+  if (err && err.message === '只支持图片文件') {
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
 });
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
