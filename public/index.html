@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>分镜提示词工作台 · NANO BANANA PRO</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">&#9654;</span>
+        <span class="logo-text">分镜提示词工作台</span>
+        <span class="logo-badge">NANO BANANA PRO</span>
+      </div>
+      <div class="header-flow">
+        <span class="flow-step active">① 分镜图</span>
+        <span class="flow-arrow">+</span>
+        <span class="flow-step">② 角色参考</span>
+        <span class="flow-arrow">+</span>
+        <span class="flow-step">③ 背景参考</span>
+        <span class="flow-arrow">+</span>
+        <span class="flow-step">④ 风格词</span>
+        <span class="flow-arrow">→</span>
+        <span class="flow-step flow-step-out">组合提示词</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="workspace">
+
+    <!-- ═══ LEFT: Upload Panel ═══ -->
+    <section class="panel panel-upload">
+      <div class="panel-title">素材 &amp; 风格</div>
+
+      <!-- ① Storyboard -->
+      <div class="upload-section">
+        <div class="section-label">
+          <span class="step-num">①</span>
+          黑白分镜图
+          <span class="badge badge-red">必填</span>
+          <span class="label-tip">单张</span>
+        </div>
+        <div class="drop-zone drop-zone-storyboard" id="storyboardZone"
+             onclick="document.getElementById('storyboardInput').click()">
+          <div class="drop-zone-inner" id="storyboardPreview">
+            <div class="drop-icon">&#8683;</div>
+            <div class="drop-text">点击或拖拽上传分镜图</div>
+            <div class="drop-sub">JPG · PNG · WEBP · 最大 25MB</div>
+          </div>
+        </div>
+        <input type="file" id="storyboardInput" accept="image/*" hidden>
+      </div>
+
+      <!-- ② Character References -->
+      <div class="upload-section">
+        <div class="section-label">
+          <span class="step-num">②</span>
+          人物形象参考图
+          <span class="badge badge-blue">可选</span>
+          <span class="label-tip">最多 6 张 · 确定上色方案</span>
+        </div>
+        <div class="drop-zone drop-zone-mini" id="characterZone"
+             onclick="document.getElementById('characterInput').click()">
+          <div class="drop-zone-inner">
+            <div class="drop-icon-sm">&#43;</div>
+            <div class="drop-text-sm">添加角色彩图参考</div>
+            <div class="drop-sub">发色 · 肤色 · 服装配色</div>
+          </div>
+        </div>
+        <input type="file" id="characterInput" accept="image/*" multiple hidden>
+        <div class="thumb-row" id="charThumbs"></div>
+      </div>
+
+      <!-- ③ Background References -->
+      <div class="upload-section">
+        <div class="section-label">
+          <span class="step-num">③</span>
+          背景场景参考图
+          <span class="badge badge-green">可选</span>
+          <span class="label-tip">最多 3 张 · 确定背景风格</span>
+        </div>
+        <div class="drop-zone drop-zone-mini" id="backgroundZone"
+             onclick="document.getElementById('backgroundInput').click()">
+          <div class="drop-zone-inner">
+            <div class="drop-icon-sm">&#9728;</div>
+            <div class="drop-text-sm">添加背景参考图</div>
+            <div class="drop-sub">场景风格 · 色调 · 环境细节</div>
+          </div>
+        </div>
+        <input type="file" id="backgroundInput" accept="image/*" multiple hidden>
+        <div class="thumb-row" id="bgThumbs"></div>
+      </div>
+
+      <!-- ④ Style Prompt -->
+      <div class="upload-section">
+        <div class="section-label">
+          <span class="step-num">④</span>
+          整体风格提示词
+          <span class="badge badge-purple">可编辑</span>
+        </div>
+        <div class="style-presets" id="stylePresets">
+          <button class="preset-chip preset-active" data-key="mature">成熟叙事动画</button>
+          <button class="preset-chip" data-key="realistic">写实二次元</button>
+          <button class="preset-chip" data-key="cinematic">影视级光效</button>
+          <button class="preset-chip" data-key="cel">赛璐璐渲染</button>
+          <button class="preset-chip" data-key="painterly">手绘质感</button>
+          <button class="preset-chip" data-key="dark">暗色调</button>
+        </div>
+        <textarea class="style-input" id="styleInput" rows="4" spellcheck="false"></textarea>
+        <div class="style-hint">可直接编辑 · 预设标签可叠加</div>
+      </div>
+
+      <!-- Extra Context -->
+      <div class="upload-section">
+        <div class="section-label">
+          <span class="step-num icon-plain">&#9998;</span>
+          补充说明
+          <span class="badge badge-gray">可选</span>
+        </div>
+        <textarea class="context-input" id="contextInput" rows="2"
+          placeholder="角色关系、剧情背景、特殊要求..."></textarea>
+      </div>
+
+      <button class="btn-analyze" id="analyzeBtn" disabled>
+        <span class="btn-icon">&#9733;</span>
+        组合分析 · 生成提示词
+      </button>
+      <div class="model-note">Claude Opus · 构图 &amp; 神态还原最高优先级</div>
+    </section>
+
+    <!-- ═══ MIDDLE: Analysis ═══ -->
+    <section class="panel panel-analysis" id="panelAnalysis">
+      <div class="panel-title">
+        分析结果
+        <span class="panel-title-sub" id="analysisMeta"></span>
+      </div>
+
+      <div class="empty-state" id="analysisEmpty">
+        <div class="empty-icon">&#9706;</div>
+        <div class="empty-text">上传素材后<br>此处显示构图 · 人物 · 背景分析</div>
+      </div>
+
+      <div class="analysis-content" id="analysisContent" style="display:none">
+
+        <!-- Composition -->
+        <div class="result-card">
+          <div class="card-title"><span class="card-dot dot-purple"></span>构图 &amp; 景别</div>
+          <div class="info-grid-3">
+            <div class="info-item">
+              <div class="info-label">景别</div>
+              <div class="info-value" id="infoShotType">—</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">机位角度</div>
+              <div class="info-value" id="infoCameraAngle">—</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">景深</div>
+              <div class="info-value" id="infoDepth">—</div>
+            </div>
+          </div>
+          <div class="info-full">
+            <div class="info-label">构图说明</div>
+            <div class="info-value" id="infoLayout">—</div>
+          </div>
+        </div>
+
+        <!-- Characters -->
+        <div class="result-card">
+          <div class="card-title"><span class="card-dot dot-blue"></span>人物分析</div>
+          <div id="charactersContainer"></div>
+        </div>
+
+        <!-- Scene -->
+        <div class="result-card">
+          <div class="card-title"><span class="card-dot dot-teal"></span>场景 &amp; 氛围</div>
+          <div class="info-grid-3">
+            <div class="info-item">
+              <div class="info-label">环境</div>
+              <div class="info-value" id="infoEnv">—</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">时段</div>
+              <div class="info-value" id="infoTime">—</div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">光线</div>
+              <div class="info-value" id="infoLight">—</div>
+            </div>
+          </div>
+          <div class="info-full">
+            <div class="info-label">氛围 &amp; 背景元素</div>
+            <div class="info-value" id="infoAtmos">—</div>
+          </div>
+        </div>
+
+        <!-- Background Reference Analysis -->
+        <div class="result-card" id="bgRefCard">
+          <div class="card-title"><span class="card-dot dot-green"></span>背景参考融合</div>
+          <div id="bgRefContent">
+            <div class="ref-no-image" id="bgRefNone">未上传背景参考图，背景由场景推断生成</div>
+            <div id="bgRefData" style="display:none">
+              <div class="info-grid-2">
+                <div class="info-item">
+                  <div class="info-label">色调</div>
+                  <div class="info-value" id="bgColorPalette">—</div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">匹配度</div>
+                  <div class="info-value" id="bgEnvMatch">—</div>
+                </div>
+              </div>
+              <div class="info-full" style="margin-top:8px">
+                <div class="info-label">风格提取</div>
+                <div class="info-value" id="bgStyleExtracted">—</div>
+              </div>
+              <div class="info-full" style="margin-top:8px">
+                <div class="info-label">移植元素</div>
+                <div class="info-value" id="bgKeyElements">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene Summary -->
+        <div class="result-card">
+          <div class="card-title"><span class="card-dot dot-yellow"></span>场景核查（中文）</div>
+          <div class="scene-summary" id="sceneSummary">—</div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ═══ RIGHT: Prompts ═══ -->
+    <section class="panel panel-prompts" id="panelPrompts">
+      <div class="panel-title">
+        生成提示词
+        <button class="btn-copy-all-header" id="copyAllBtn" style="display:none">一键复制全部</button>
+      </div>
+
+      <div class="empty-state" id="promptsEmpty">
+        <div class="empty-icon">&#9998;</div>
+        <div class="empty-text">分析完成后<br>此处显示完整提示词</div>
+      </div>
+
+      <div class="prompts-content" id="promptsContent" style="display:none">
+
+        <!-- NANO BANANA Full -->
+        <div class="prompt-card prompt-card-featured">
+          <div class="prompt-header">
+            <div class="prompt-label-group">
+              <span class="prompt-label prompt-label-featured">NANO BANANA PRO · 组合提示词</span>
+              <span class="prompt-sublabel">人物 + 构图 + 背景 + 风格 融合输出</span>
+            </div>
+            <button class="copy-btn" data-target="promptFull">复制</button>
+          </div>
+          <div class="prompt-text prompt-text-featured" id="promptFull"></div>
+        </div>
+
+        <!-- Separator -->
+        <div class="section-divider">分项提示词</div>
+
+        <!-- Character -->
+        <div class="prompt-card">
+          <div class="prompt-header">
+            <span class="prompt-label">
+              <span class="prompt-dot dot-blue"></span>人物提示词
+            </span>
+            <button class="copy-btn" data-target="promptCharacter">复制</button>
+          </div>
+          <div class="prompt-text" id="promptCharacter"></div>
+        </div>
+
+        <!-- Composition -->
+        <div class="prompt-card">
+          <div class="prompt-header">
+            <span class="prompt-label">
+              <span class="prompt-dot dot-purple"></span>构图提示词
+            </span>
+            <button class="copy-btn" data-target="promptComposition">复制</button>
+          </div>
+          <div class="prompt-text" id="promptComposition"></div>
+        </div>
+
+        <!-- Background -->
+        <div class="prompt-card">
+          <div class="prompt-header">
+            <span class="prompt-label">
+              <span class="prompt-dot dot-green"></span>背景提示词
+              <span class="prompt-label-tag" id="bgRefTag" style="display:none">含参考融合</span>
+            </span>
+            <button class="copy-btn" data-target="promptBackground">复制</button>
+          </div>
+          <div class="prompt-text" id="promptBackground"></div>
+        </div>
+
+        <!-- Style -->
+        <div class="prompt-card">
+          <div class="prompt-header">
+            <span class="prompt-label">
+              <span class="prompt-dot dot-yellow"></span>风格提示词
+            </span>
+            <button class="copy-btn" data-target="promptStyle">复制</button>
+          </div>
+          <div class="prompt-text" id="promptStyle"></div>
+        </div>
+
+        <!-- Negative -->
+        <div class="prompt-card prompt-card-negative">
+          <div class="prompt-header">
+            <span class="prompt-label prompt-label-negative">负面提示词</span>
+            <button class="copy-btn" data-target="promptNegative">复制</button>
+          </div>
+          <div class="prompt-text" id="promptNegative"></div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay" style="display:none">
+    <div class="loading-box">
+      <div class="loading-spinner"></div>
+      <div class="loading-title">Claude Opus 分析中</div>
+      <div class="loading-steps">
+        <div class="loading-step" data-step="0">○ 解析分镜构图与景别...</div>
+        <div class="loading-step" data-step="1">○ 识别人物站位与神态...</div>
+        <div class="loading-step" data-step="2">○ 匹配人物上色方案...</div>
+        <div class="loading-step" data-step="3">○ 融合背景参考图风格...</div>
+        <div class="loading-step" data-step="4">○ 融合自定义风格提示词...</div>
+        <div class="loading-step" data-step="5">○ 组合输出完整提示词...</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

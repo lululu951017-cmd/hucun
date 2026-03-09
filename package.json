@@ -1,0 +1,18 @@
+{
+  "name": "storyboard-workbench",
+  "version": "1.0.0",
+  "description": "分镜图提示词工作台 - 黑白分镜转AI绘图提示词",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
