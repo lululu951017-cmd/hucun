@@ -246,10 +246,37 @@ app.post('/api/analyze', upload.fields([
     let result;
     try {
       result = JSON.parse(rawText);
-    } catch {
-      const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) result = JSON.parse(jsonMatch[0]);
-      else return res.status(500).json({ error: '响应解析失败，请重试', raw: rawText });
+    } catch (e) {
+      // Try to extract JSON from the response
+      let jsonStr = rawText;
+
+      // Try to find JSON between markdown code blocks
+      const codeBlockMatch = rawText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      } else {
+        // Try to find the first complete JSON object
+        const jsonMatch = rawText.match(/\{[\s\S]*?\n\}/);
+        if (jsonMatch) {
+          jsonStr = jsonMatch[0];
+        }
+      }
+
+      // Clean common JSON errors (trailing commas, etc.)
+      jsonStr = jsonStr
+        .replace(/,\s*([}\]])/g, '$1')  // Remove trailing commas
+        .replace(/([{,]\s*)(\w+):/g, '$1"$2":')  // Add quotes to unquoted keys
+        .replace(/:\s*([\w.]+)([,\n])/g, ':"$1"$2');  // Add quotes to unquoted string values
+
+      try {
+        result = JSON.parse(jsonStr);
+      } catch {
+        console.error('[JSON parse error]', rawText);
+        return res.status(500).json({
+          error: 'AI 返回的内容无法解析为 JSON，请重试',
+          raw: rawText.substring(0, 500) + '...'
+        });
+      }
     }
 
     res.json({ success: true, data: result });
