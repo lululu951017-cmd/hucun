@@ -60,7 +60,7 @@ async function analyzeWithOpenAI(client, content, prompt) {
 
 // ── Google Analysis Function ──────────────────────────────────────────────────
 async function analyzeWithGoogle(client, content, prompt) {
-  const model = client.getGenerativeModel({ model: 'gemini-1.5-pro' });
+  const model = client.getGenerativeModel({ model: 'gemini-1.5-pro-002' });
 
   // Convert content array to Gemini format
   const geminiContent = [];
