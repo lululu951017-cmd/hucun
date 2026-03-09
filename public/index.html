@@ -123,6 +123,18 @@
           placeholder="角色关系、剧情背景、特殊要求..."></textarea>
       </div>
 
+      <!-- API Key -->
+      <div class="upload-section">
+        <div class="section-label">
+          <span class="step-num icon-plain">&#128274;</span>
+          Anthropic API Key
+          <span class="badge badge-orange">必填</span>
+        </div>
+        <input type="password" class="api-key-input" id="apiKeyInput"
+          placeholder="sk-ant-..." autocomplete="off">
+        <div class="style-hint">密钥仅保存在本地，不会上传到服务器</div>
+      </div>
+
       <button class="btn-analyze" id="analyzeBtn" disabled>
         <span class="btn-icon">&#9733;</span>
         组合分析 · 生成提示词

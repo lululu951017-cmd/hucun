@@ -163,6 +163,14 @@ const loadingStepEls = document.querySelectorAll('.loading-step');
 
 analyzeBtn.addEventListener('click', async () => {
   if (!storyboardFile) return;
+
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  if (!apiKey) {
+    alert('请填写 Anthropic API Key');
+    document.getElementById('apiKeyInput').focus();
+    return;
+  }
+
   showLoading();
 
   try {
@@ -176,6 +184,8 @@ analyzeBtn.addEventListener('click', async () => {
 
     const style = styleInput.value.trim();
     if (style) fd.append('stylePrompt', style);
+
+    fd.append('apiKey', apiKey);
 
     const res  = await fetch('/api/analyze', { method: 'POST', body: fd });
     const json = await res.json();

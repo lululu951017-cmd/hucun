@@ -27,7 +27,10 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// ── Get Anthropic Client Helper ───────────────────────────────────────────────
+function getAnthropicClient(apiKey) {
+  return new Anthropic({ apiKey });
+}
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
@@ -118,6 +121,13 @@ app.post('/api/analyze', upload.fields([
     const storyboardFile = req.files?.['storyboard']?.[0];
     const characterFiles = req.files?.['characters'] || [];
     const backgroundFiles = req.files?.['backgrounds'] || [];
+
+    const apiKey = req.body.apiKey?.trim();
+    if (!apiKey) {
+      return res.status(400).json({ error: '请提供 Anthropic API Key' });
+    }
+
+    const anthropic = getAnthropicClient(apiKey);
 
     if (!storyboardFile) {
       return res.status(400).json({ error: '请上传分镜图' });
