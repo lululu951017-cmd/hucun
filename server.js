@@ -90,6 +90,59 @@ async function analyzeWithGoogle(client, content, prompt) {
   return result.response.text();
 }
 
+async function normalizeJsonWithOpenAI(client, rawText) {
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o',
+    response_format: { type: 'json_object' },
+    temperature: 0,
+    max_tokens: 3500,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text:
+              'Convert the following model output into strict valid JSON only. ' +
+              'Keep all useful fields. Remove markdown/code fences/explanations. ' +
+              'If some fields are missing, preserve existing structure as much as possible.\\n\\n' +
+              rawText
+          }
+        ]
+      }
+    ]
+  });
+
+  return response.choices?.[0]?.message?.content || '';
+}
+
+async function normalizeJsonWithGoogle(client, rawText) {
+  const model = client.getGenerativeModel({ model: 'gemini-3.1-pro-preview' });
+  const result = await model.generateContent({
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text:
+              'Convert the following model output into strict valid JSON only. ' +
+              'Keep all useful fields. Remove markdown/code fences/explanations. ' +
+              'If some fields are missing, preserve existing structure as much as possible.\\n\\n' +
+              rawText
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0,
+      responseMimeType: 'application/json',
+      maxOutputTokens: 3500
+    }
+  });
+
+  return result.response.text();
+}
+
 function sanitizeJsonText(text) {
   return text
     .replace(/^\uFEFF/, '')
@@ -194,6 +247,27 @@ function parseAiJson(rawText) {
 
   throw new Error('Unable to parse AI response as JSON');
 }
+
+async function normalizeAndParseAiJson(apiProvider, client, rawText) {
+  try {
+    return parseAiJson(rawText);
+  } catch (_) {
+    let normalizedRaw = '';
+
+    if (apiProvider === 'openai') {
+      normalizedRaw = await normalizeJsonWithOpenAI(client, rawText);
+    } else if (apiProvider === 'google') {
+      normalizedRaw = await normalizeJsonWithGoogle(client, rawText);
+    }
+
+    if (!normalizedRaw) {
+      throw new Error('Normalization returned empty response');
+    }
+
+    return parseAiJson(normalizedRaw);
+  }
+}
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
@@ -343,7 +417,7 @@ app.post('/api/analyze', upload.fields([
     console.log('[API raw response preview]', rawText.substring(0, 300));
 
     try {
-      result = parseAiJson(rawText);
+      result = await normalizeAndParseAiJson(apiProvider, client, rawText);
     } catch (e) {
       console.error('[JSON parse error]', e.message);
       console.error('[Full response]', rawText);
@@ -372,6 +446,7 @@ if (require.main === module) {
 }
 
 module.exports = app;
+
 
 
 
