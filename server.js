@@ -1,6 +1,5 @@
 const express = require('express');
 const multer = require('multer');
-const Anthropic = require('@anthropic-ai/sdk');
 const OpenAI = require('openai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
@@ -35,11 +34,9 @@ function getClient(apiProvider, apiKey) {
     case 'openai':
       return new OpenAI({ apiKey });
     case 'google':
-      // Configure Google Generative AI with API key
       return new GoogleGenerativeAI(apiKey);
-    case 'anthropic':
     default:
-      return new Anthropic({ apiKey });
+      throw new Error('不支持的 API 提供商');
   }
 }
 
@@ -86,18 +83,6 @@ async function analyzeWithGoogle(client, content, prompt) {
   });
 
   return result.response.text();
-}
-
-// ── Anthropic Analysis Function ─────────────────────────────────────────────
-async function analyzeWithAnthropic(client, content, systemPrompt) {
-  const response = await client.messages.create({
-    model: 'claude-3-5-sonnet-20241022',
-    max_tokens: 3500,
-    system: systemPrompt,
-    messages: [{ role: 'user', content }]
-  });
-
-  return response.content[0].text;
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -254,9 +239,7 @@ app.post('/api/analyze', upload.fields([
       content.push({ type: 'text', text: `\n${SYSTEM_PROMPT}\n\n${analysisPrompt}` });
       rawText = await analyzeWithGoogle(client, content, analysisPrompt);
     } else {
-      // Anthropic
-      content.push({ type: 'text', text: analysisPrompt });
-      rawText = await analyzeWithAnthropic(client, content, SYSTEM_PROMPT);
+      return res.status(400).json({ error: '不支持的 API 提供商' });
     }
 
     // Parse JSON response
