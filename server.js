@@ -244,9 +244,13 @@ app.post('/api/analyze', upload.fields([
 
     // Parse JSON response
     let result;
+    console.log('[API raw response length]', rawText.length);
+    console.log('[API raw response preview]', rawText.substring(0, 300));
+
     try {
       result = JSON.parse(rawText);
     } catch (e) {
+      console.error('[JSON parse error]', e.message);
       // Try to extract JSON from the response
       let jsonStr = rawText;
 
@@ -254,11 +258,13 @@ app.post('/api/analyze', upload.fields([
       const codeBlockMatch = rawText.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
       if (codeBlockMatch) {
         jsonStr = codeBlockMatch[1];
+        console.log('[Found JSON in code block]');
       } else {
         // Try to find the first complete JSON object
         const jsonMatch = rawText.match(/\{[\s\S]*?\n\}/);
         if (jsonMatch) {
           jsonStr = jsonMatch[0];
+          console.log('[Found JSON object]');
         }
       }
 
@@ -270,11 +276,13 @@ app.post('/api/analyze', upload.fields([
 
       try {
         result = JSON.parse(jsonStr);
-      } catch {
-        console.error('[JSON parse error]', rawText);
+        console.log('[JSON parse successful after cleaning]');
+      } catch (e2) {
+        console.error('[Final JSON parse error]', e2.message);
+        console.error('[Full response]', rawText);
         return res.status(500).json({
           error: 'AI 返回的内容无法解析为 JSON，请重试',
-          raw: rawText.substring(0, 500) + '...'
+          raw: rawText.substring(0, 1000) + '...'
         });
       }
     }
