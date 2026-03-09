@@ -35,6 +35,7 @@ function getClient(apiProvider, apiKey) {
     case 'openai':
       return new OpenAI({ apiKey });
     case 'google':
+      // Configure Google Generative AI with API key
       return new GoogleGenerativeAI(apiKey);
     case 'anthropic':
     default:
@@ -60,7 +61,7 @@ async function analyzeWithOpenAI(client, content, prompt) {
 
 // ── Google Analysis Function ──────────────────────────────────────────────────
 async function analyzeWithGoogle(client, content, prompt) {
-  const model = client.getGenerativeModel({ model: 'gemini-1.5-pro-002' });
+  const model = client.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
 
   // Convert content array to Gemini format
   const geminiContent = [];
