@@ -261,6 +261,31 @@ body {
   font-size: 12px;
   transition: border-color 0.2s;
 }
+.api-provider-select {
+  width: 100%;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.api-provider-select:focus { outline: none; border-color: var(--accent); }
+
+.api-key-input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: 9px 11px;
+  font-family: inherit;
+  font-size: 12px;
+  transition: border-color 0.2s;
+}
 .api-key-input:focus { outline: none; border-color: var(--accent); }
 .api-key-input::placeholder { color: var(--text3); font-style: italic; }
 

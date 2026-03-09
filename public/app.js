@@ -166,10 +166,12 @@ analyzeBtn.addEventListener('click', async () => {
 
   const apiKey = document.getElementById('apiKeyInput').value.trim();
   if (!apiKey) {
-    alert('请填写 Anthropic API Key');
+    alert('请填写 API Key');
     document.getElementById('apiKeyInput').focus();
     return;
   }
+
+  const apiProvider = document.getElementById('apiProviderSelect').value;
 
   showLoading();
 
@@ -186,6 +188,7 @@ analyzeBtn.addEventListener('click', async () => {
     if (style) fd.append('stylePrompt', style);
 
     fd.append('apiKey', apiKey);
+    fd.append('apiProvider', apiProvider);
 
     const res  = await fetch('/api/analyze', { method: 'POST', body: fd });
     const json = await res.json();

@@ -1,6 +1,8 @@
 const express = require('express');
 const multer = require('multer');
 const Anthropic = require('@anthropic-ai/sdk');
+const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const path = require('path');
 
 const app = express();
@@ -27,9 +29,74 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// ── Get Anthropic Client Helper ───────────────────────────────────────────────
-function getAnthropicClient(apiKey) {
-  return new Anthropic({ apiKey });
+// ── Get API Client Helper ────────────────────────────────────────────────────
+function getClient(apiProvider, apiKey) {
+  switch (apiProvider) {
+    case 'openai':
+      return new OpenAI({ apiKey });
+    case 'google':
+      return new GoogleGenerativeAI(apiKey);
+    case 'anthropic':
+    default:
+      return new Anthropic({ apiKey });
+  }
+}
+
+// ── OpenAI Analysis Function ─────────────────────────────────────────────────
+async function analyzeWithOpenAI(client, content, prompt) {
+  const messages = [
+    { role: 'user', content }
+  ];
+
+  const response = await client.chat.completions.create({
+    model: 'gpt-4o',
+    messages,
+    max_tokens: 3500,
+    temperature: 0.7
+  });
+
+  return response.choices[0].message.content;
+}
+
+// ── Google Analysis Function ──────────────────────────────────────────────────
+async function analyzeWithGoogle(client, content, prompt) {
+  const model = client.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+  // Convert content array to Gemini format
+  const geminiContent = [];
+
+  for (const item of content) {
+    if (item.type === 'text') {
+      geminiContent.push({ text: item.text });
+    } else if (item.type === 'image') {
+      const base64Data = item.source.data;
+      const mimeType = item.source.media_type;
+
+      // Gemini format expects { inlineData: { data: base64, mimeType } }
+      geminiContent.push({
+        inlineData: { data: base64Data, mimeType }
+      });
+    }
+  }
+
+  const result = await model.generateContent({
+    contents: [{ role: 'user', parts: geminiContent }],
+    generationConfig: { maxOutputTokens: 3500, temperature: 0.7 }
+  });
+
+  return result.response.text();
+}
+
+// ── Anthropic Analysis Function ─────────────────────────────────────────────
+async function analyzeWithAnthropic(client, content, systemPrompt) {
+  const response = await client.messages.create({
+    model: 'claude-3-5-sonnet-20241022',
+    max_tokens: 3500,
+    system: systemPrompt,
+    messages: [{ role: 'user', content }]
+  });
+
+  return response.content[0].text;
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -123,16 +190,17 @@ app.post('/api/analyze', upload.fields([
     const backgroundFiles = req.files?.['backgrounds'] || [];
 
     const apiKey = req.body.apiKey?.trim();
-    if (!apiKey) {
-      return res.status(400).json({ error: '请提供 Anthropic API Key' });
-    }
+    const apiProvider = req.body.apiProvider?.trim() || 'anthropic';
 
-    const anthropic = getAnthropicClient(apiKey);
+    if (!apiKey) {
+      return res.status(400).json({ error: '请提供 API Key' });
+    }
 
     if (!storyboardFile) {
       return res.status(400).json({ error: '请上传分镜图' });
     }
 
+    // Build content array
     const content = [];
 
     // 1. Storyboard
@@ -170,16 +238,27 @@ app.post('/api/analyze', upload.fields([
 
     // 5. Analysis prompt with optional custom style
     const customStyle = req.body.stylePrompt?.trim();
-    content.push({ type: 'text', text: buildAnalysisPrompt(customStyle) });
+    const analysisPrompt = buildAnalysisPrompt(customStyle);
 
-    const response = await anthropic.messages.create({
-      model: 'claude-opus-4-6',
-      max_tokens: 3500,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: 'user', content }]
-    });
+    // Call the appropriate API based on provider
+    let rawText;
+    const client = getClient(apiProvider, apiKey);
 
-    const rawText = response.content[0].text.trim();
+    if (apiProvider === 'openai') {
+      // For OpenAI, we need to prepend the system prompt as part of the message
+      content.push({ type: 'text', text: `\n${SYSTEM_PROMPT}\n\n${analysisPrompt}` });
+      rawText = await analyzeWithOpenAI(client, content, analysisPrompt);
+    } else if (apiProvider === 'google') {
+      // For Google, prepend system prompt to analysis prompt
+      content.push({ type: 'text', text: `\n${SYSTEM_PROMPT}\n\n${analysisPrompt}` });
+      rawText = await analyzeWithGoogle(client, content, analysisPrompt);
+    } else {
+      // Anthropic
+      content.push({ type: 'text', text: analysisPrompt });
+      rawText = await analyzeWithAnthropic(client, content, SYSTEM_PROMPT);
+    }
+
+    // Parse JSON response
     let result;
     try {
       result = JSON.parse(rawText);
